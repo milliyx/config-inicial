@@ -6,7 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-const GLint WIDTH = 800, HEIGHT = 600;
+const GLint WIDTH = 800, HEIGHT = 600; //ventana de 
 
 // Shaders
 const GLchar* vertexShaderSource = 
@@ -30,7 +30,7 @@ const GLchar* fragmentShaderSource =
 
 // Funciones de configuracion del shader
 
-void CrearShader(void);
+void CrearShader(void); //declarar una funcion pero se describe mas abjo
 
 
 
@@ -83,6 +83,7 @@ int main() {
 
 	// Set up vertex data (and buffer(s)) and attribute pointers
 	GLfloat vertices[] =
+		//coordenadas de los vertices para dibujar un triangulo
 	{
 		-0.5f, -0.5f, 0.0f, // Left
 		0.5f, -0.5f, 0.0f, // Right
