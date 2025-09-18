@@ -1,5 +1,8 @@
 // Std. Includes
 #include <string>
+#include <iostream>
+#include <cstdlib>
+#include <cmath>
 
 // GLEW
 #include <GL/glew.h>
@@ -12,7 +15,7 @@
 #include "Camera.h"
 #include "Model.h"
 
-// GLM Mathemtics
+// GLM Mathematics
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -26,13 +29,12 @@ const GLuint WIDTH = 800, HEIGHT = 600;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
 
 // Function prototypes
-void KeyCallback( GLFWwindow *window, int key, int scancode, int action, int mode );
-void MouseCallback( GLFWwindow *window, double xPos, double yPos );
-void DoMovement( );
-
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void MouseCallback(GLFWwindow* window, double xPos, double yPos);
+void DoMovement();
 
 // Camera
-Camera camera( glm::vec3( 0.0f, 0.0f, 3.0f ) );
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 bool keys[1024];
 GLfloat lastX = 400, lastY = 300;
 bool firstMouse = true;
@@ -40,173 +42,203 @@ bool firstMouse = true;
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
 
-
-
-int main( )
+int main()
 {
     // Init GLFW
-    glfwInit( );
-    // Set all the required options for GLFW
-    glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
-    glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
-    glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
-    glfwWindowHint( GLFW_RESIZABLE, GL_FALSE );
-    
-    // Create a GLFWwindow object that we can use for GLFW's functions
-    GLFWwindow *window = glfwCreateWindow( WIDTH, HEIGHT, "Carga de modelos y camara sintetica", nullptr, nullptr );
-    
-    if ( nullptr == window )
+    if (!glfwInit())
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate( );
-        
+        std::cout << "Failed to init GLFW\n";
         return EXIT_FAILURE;
     }
-    
-    glfwMakeContextCurrent( window );
-    
-    glfwGetFramebufferSize( window, &SCREEN_WIDTH, &SCREEN_HEIGHT );
-    
-    // Set the required callback functions
-    glfwSetKeyCallback( window, KeyCallback );
-    glfwSetCursorPosCallback( window, MouseCallback );
-    
-    // GLFW Options
-    //glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
-    
-    // Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
+
+    // GLFW config
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+    // Window
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Carga de modelos y camara sintetica", nullptr, nullptr);
+    if (nullptr == window)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+    glfwMakeContextCurrent(window);
+
+    glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
+
+    // Callbacks
+    glfwSetKeyCallback(window, KeyCallback);
+    glfwSetCursorPosCallback(window, MouseCallback);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // GLEW
     glewExperimental = GL_TRUE;
-    // Initialize GLEW to setup the OpenGL Function pointers
-    if ( GLEW_OK != glewInit( ) )
+    if (GLEW_OK != glewInit())
     {
         std::cout << "Failed to initialize GLEW" << std::endl;
         return EXIT_FAILURE;
     }
-    
-    // Define the viewport dimensions
-    glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
-    
+
+    // Viewport
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
     // OpenGL options
-    glEnable( GL_DEPTH_TEST );
-    
-    // Setup and compile our shaders
-    Shader shader( "Shader/modelLoading.vs", "Shader/modelLoading.frag" );
-    
+    glEnable(GL_DEPTH_TEST);
+
+    // Shaders
+    Shader shader("Shader/modelLoading.vs", "Shader/modelLoading.frag");
+
     // Load models
     Model dog((char*)"Models/RedDog.obj");
     Model cat((char*)"Models/miGato.obj");
 
+    // Projection
+    glm::mat4 projection = glm::perspective(camera.GetZoom(),
+        (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+        0.1f, 100.0f);
 
-    glm::mat4 projection = glm::perspective( camera.GetZoom( ), ( float )SCREEN_WIDTH/( float )SCREEN_HEIGHT, 0.1f, 100.0f );
-    
-  
+    // --- Uniform locations (una sola vez) ---
+    shader.Use();
+    GLint uProj = glGetUniformLocation(shader.Program, "projection");
+    GLint uView = glGetUniformLocation(shader.Program, "view");
+    GLint uModel = glGetUniformLocation(shader.Program, "model");
+
+    glUniformMatrix4fv(uProj, 1, GL_FALSE, glm::value_ptr(projection));
 
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
-        // Set frame time
-        GLfloat currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        // Time
+        GLfloat t = glfwGetTime();
+        deltaTime = t - lastFrame;
+        lastFrame = t;
 
-        // Check and call events
+        // Input
         glfwPollEvents();
         DoMovement();
 
-        // Clear the colorbuffer
+        // Clear
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.Use();
 
+        // View cada frame
         glm::mat4 view = camera.GetViewMatrix();
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(uView, 1, GL_FALSE, glm::value_ptr(view));
 
-        // Draw the loaded model
-        glm::mat4 model(1);
-        glUniformMatrix4fv(glGetUniformLocation(shader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
-        
-        dog.Draw(shader);
-        cat.Draw(shader);
+        // =========================
+        //    PERROS (2 instancias)
+        // =========================
 
-        // Swap the buffers
-        glfwSwapBuffers( window );
+        // Perro #1: T * R * S
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(-1.2f, 0.0f, 0.0f));               // posición
+            model = glm::rotate(model, glm::radians(fmod(t * 45.0f, 360.0f)),          // 45°/s
+                glm::vec3(0.0f, 1.0f, 0.0f));                           // eje Y
+            model = glm::scale(model, glm::vec3(0.6f));                                 // escala
+            glUniformMatrix4fv(uModel, 1, GL_FALSE, glm::value_ptr(model));
+            dog.Draw(shader);
+        }
+
+        // Perro #2 (duplicado): otra T/R/S
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(-1.2f, 0.0f, -2.0f));
+            model = glm::rotate(model, glm::radians(fmod(t * 90.0f, 360.0f)),          // 90°/s
+                glm::vec3(0.0f, 1.0f, 0.3f));                           // eje distinto
+            model = glm::scale(model, glm::vec3(0.45f));
+            glUniformMatrix4fv(uModel, 1, GL_FALSE, glm::value_ptr(model));
+            dog.Draw(shader);
+        }
+
+        // =========================
+        //     GATOS (2 instancias)
+        // =========================
+
+        // Gato #1
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(1.2f, 0.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(fmod(-t * 60.0f, 360.0f)),         // -60°/s
+                glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(0.6f));
+            glUniformMatrix4fv(uModel, 1, GL_FALSE, glm::value_ptr(model));
+            cat.Draw(shader);
+        }
+
+        // Gato #2 (duplicado)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(1.8f, 0.3f, -1.5f));
+            model = glm::rotate(model, glm::radians(fmod(t * 30.0f, 360.0f)),          // 30°/s
+                glm::vec3(1.0f, 0.0f, 0.0f));                           // rota sobre X
+            model = glm::scale(model, glm::vec3(0.5f, 0.7f, 0.5f));                     // escala no uniforme
+            glUniformMatrix4fv(uModel, 1, GL_FALSE, glm::value_ptr(model));
+            cat.Draw(shader);
+        }
+
+        // Swap
+        glfwSwapBuffers(window);
     }
-    
-    glfwTerminate( );
+
+    glfwTerminate();
     return 0;
 }
 
-
 // Moves/alters the camera positions based on user input
-void DoMovement( )
+void DoMovement()
 {
     // Camera controls
-    if ( keys[GLFW_KEY_W] || keys[GLFW_KEY_UP] )
-    {
-        camera.ProcessKeyboard( FORWARD, deltaTime );
-    }
-    
-    if ( keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN] )
-    {
-        camera.ProcessKeyboard( BACKWARD, deltaTime );
-    }
-    
-    if ( keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT] )
-    {
-        camera.ProcessKeyboard( LEFT, deltaTime );
-    }
-    
-    if ( keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT] )
-    {
-        camera.ProcessKeyboard( RIGHT, deltaTime );
-    }
+    if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
+        camera.ProcessKeyboard(FORWARD, deltaTime);
 
-   
+    if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN])
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+
+    if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT])
+        camera.ProcessKeyboard(LEFT, deltaTime);
+
+    if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT])
+        camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
 // Is called whenever a key is pressed/released via GLFW
-void KeyCallback( GLFWwindow *window, int key, int scancode, int action, int mode )
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-    if ( GLFW_KEY_ESCAPE == key && GLFW_PRESS == action )
-    {
+    if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
         glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-    
-    if ( key >= 0 && key < 1024 )
+
+    if (key >= 0 && key < 1024)
     {
-        if ( action == GLFW_PRESS )
-        {
+        if (action == GLFW_PRESS)
             keys[key] = true;
-        }
-        else if ( action == GLFW_RELEASE )
-        {
+        else if (action == GLFW_RELEASE)
             keys[key] = false;
-        }
     }
-
- 
-
- 
 }
 
-void MouseCallback( GLFWwindow *window, double xPos, double yPos )
+void MouseCallback(GLFWwindow* window, double xPos, double yPos)
 {
-    if ( firstMouse )
+    if (firstMouse)
     {
-        lastX = xPos;
-        lastY = yPos;
+        lastX = (GLfloat)xPos;
+        lastY = (GLfloat)yPos;
         firstMouse = false;
     }
-    
-    GLfloat xOffset = xPos - lastX;
-    GLfloat yOffset = lastY - yPos;  // Reversed since y-coordinates go from bottom to left
-    
-    lastX = xPos;
-    lastY = yPos;
-    
-    camera.ProcessMouseMovement( xOffset, yOffset );
-}
 
+    GLfloat xOffset = (GLfloat)xPos - lastX;
+    GLfloat yOffset = lastY - (GLfloat)yPos; // Reversed since y-coordinates go from bottom to top
+
+    lastX = (GLfloat)xPos;
+    lastY = (GLfloat)yPos;
+
+    camera.ProcessMouseMovement(xOffset, yOffset);
+}
