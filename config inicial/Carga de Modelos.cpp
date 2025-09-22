@@ -1,3 +1,7 @@
+// =======================
+// main.cpp
+// =======================
+
 // Std. Includes
 #include <string>
 #include <iostream>
@@ -90,6 +94,10 @@ int main()
 
     // OpenGL options
     glEnable(GL_DEPTH_TEST);
+    // Opcional: culling si tus modelos tienen winding CCW correcto
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
+    // glFrontFace(GL_CCW);
 
     // Shaders
     Shader shader("Shader/modelLoading.vs", "Shader/modelLoading.frag");
@@ -98,10 +106,12 @@ int main()
     Model dog((char*)"Models/RedDog.obj");
     Model cat((char*)"Models/miGato.obj");
 
-    // Projection
-    glm::mat4 projection = glm::perspective(camera.GetZoom(),
+    // Projection (FOV en radianes)
+    glm::mat4 projection = glm::perspective(
+        glm::radians(camera.GetZoom()),                   // <- en radianes
         (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-        0.1f, 100.0f);
+        0.1f, 100.0f
+    );
 
     // --- Uniform locations (una sola vez) ---
     shader.Use();
@@ -153,7 +163,7 @@ int main()
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, glm::vec3(-1.2f, 0.0f, -2.0f));
             model = glm::rotate(model, glm::radians(fmod(t * 90.0f, 360.0f)),          // 90°/s
-                glm::vec3(0.0f, 1.0f, 0.3f));                           // eje distinto
+                glm::vec3(0.0f, 1.0f, 0.3f));                           // eje ligeramente inclinado
             model = glm::scale(model, glm::vec3(0.45f));
             glUniformMatrix4fv(uModel, 1, GL_FALSE, glm::value_ptr(model));
             dog.Draw(shader);
@@ -196,7 +206,6 @@ int main()
 // Moves/alters the camera positions based on user input
 void DoMovement()
 {
-    // Camera controls
     if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
         camera.ProcessKeyboard(FORWARD, deltaTime);
 
@@ -235,7 +244,7 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
     }
 
     GLfloat xOffset = (GLfloat)xPos - lastX;
-    GLfloat yOffset = lastY - (GLfloat)yPos; // Reversed since y-coordinates go from bottom to top
+    GLfloat yOffset = lastY - (GLfloat)yPos; // Reversed since y goes bottom->top
 
     lastX = (GLfloat)xPos;
     lastY = (GLfloat)yPos;
