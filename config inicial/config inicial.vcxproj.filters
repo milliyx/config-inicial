@@ -49,7 +49,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Iluminacion.cpp">
+    <ClCompile Include="KeyFrames.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

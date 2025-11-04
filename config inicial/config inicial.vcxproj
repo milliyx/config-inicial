@@ -152,7 +152,7 @@
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Iluminacion.cpp" />
+    <ClCompile Include="KeyFrames.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
